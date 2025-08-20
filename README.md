@@ -71,10 +71,11 @@ task build-cli  # Command line version
 - **R** to reset and start over
 - **Q** or **Ctrl+C** to quit
 
-**Paste Methods:**
-1. **Interactive paste**: Run `task run-tui` and paste directly in the terminal
-2. **Clipboard paste**: Run `task run-tui-paste` to automatically use clipboard content
+**Large Text Input Methods (recommended):**
+1. **Easy wrapper**: `task run-easy` - Interactive menu for large text
+2. **Clipboard paste**: `task run-tui-paste` - Automatically uses clipboard
 3. **Pipe input**: `pbpaste | textsplit-tui` or `echo "text" | textsplit-tui`
+4. **Manual paste**: `task run-tui` - For small text only (large paste unreliable)
 
 The TUI provides a clean, visual interface where you can:
 1. Paste your large text
@@ -166,7 +167,8 @@ task --list
 
 # Essential commands
 task setup           # First time setup
-task run-tui         # Run the interactive UI
+task run-easy        # Easy interactive menu (best for large text)
+task run-tui         # Run the interactive UI (small text only)
 task run-tui-paste   # Run TUI with clipboard content
 task run-cli         # Run command line version  
 task demo            # Quick demonstration

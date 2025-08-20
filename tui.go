@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -70,6 +70,12 @@ var (
 			Background(lipgloss.Color("#F0FDF4")).
 			Padding(0, 1).
 			MarginBottom(1)
+
+	warningStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#DC2626")).
+			Background(lipgloss.Color("#FEF2F2")).
+			Padding(0, 1).
+			MarginBottom(1)
 )
 
 type model struct {
@@ -106,6 +112,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.currentView == 0 {
+				if len(m.inputText) == 0 {
+					// No text to split, show instructions
+					return m, nil
+				}
 				// Split the text
 				m.chunks = splitText(m.inputText, m.chunkSize)
 				if len(m.chunks) > 0 {
@@ -135,37 +145,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.chunks = []string{}
 			m.currentView = 0
 
-		case "ctrl+v":
-			// Handle paste (this is often handled by the terminal, but we can try)
-			// In practice, most terminals will paste the text as a series of characters
-			// which will be handled by the default case below
+		case "i":
+			// Manual input mode - read from stdin
+			if m.currentView == 0 {
+				return m, readFromStdin()
+			}
 
 		case "backspace":
 			if m.currentView == 0 && len(m.inputText) > 0 {
 				m.inputText = m.inputText[:len(m.inputText)-1]
 			}
 
-		case "delete":
-			if m.currentView == 0 && len(m.inputText) > 0 {
-				m.inputText = m.inputText[:len(m.inputText)-1]
-			}
-
 		default:
-			// Handle input text (including pasted text)
-			if m.currentView == 0 {
-				// Handle special keys that shouldn't be added to input
-				switch msg.Type {
-				case tea.KeyCtrlC, tea.KeyCtrlD, tea.KeyEsc:
-					// Don't add these to input
-				default:
-					// Add the string to input - this handles both single characters and pasted text
-					if len(msg.String()) > 0 {
-						// Filter out control characters but allow printable text and newlines
-						text := msg.String()
-						if isPrintableText(text) {
-							m.inputText += text
-						}
-					}
+			// Handle single character input (for small edits)
+			if m.currentView == 0 && len(msg.String()) == 1 {
+				// Only add printable characters
+				char := msg.String()
+				if char >= " " && char <= "~" {
+					m.inputText += char
 				}
 			}
 		}
@@ -174,22 +171,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// isPrintableText checks if the text contains printable characters
-func isPrintableText(s string) bool {
-	if len(s) == 0 {
-		return false
+// Command to read from stdin
+func readFromStdin() tea.Cmd {
+	return func() tea.Msg {
+		return stdinInputMsg{}
 	}
-	
-	// Allow newlines, tabs, and printable ASCII characters
-	for _, r := range s {
-		if r == '\n' || r == '\t' || r == '\r' || (r >= 32 && r <= 126) || r >= 128 {
-			continue
-		} else {
-			return false
-		}
-	}
-	return true
 }
+
+type stdinInputMsg struct{}
 
 func (m model) View() string {
 	var sections []string
@@ -221,12 +210,12 @@ func (m model) renderInputView() string {
 	var content []string
 
 	// Input box
-	inputLabel := "📝 Paste your text here (Cmd+V or Ctrl+V):"
+	inputLabel := "📝 Text Input:"
 	content = append(content, inputLabel)
 
 	inputContent := m.inputText
 	if len(inputContent) == 0 {
-		inputContent = "Paste your large text here...\n\nTip: Most terminals handle paste automatically.\nJust copy your text and paste it here!"
+		inputContent = "No text loaded yet...\n\nTo load large text:\n• Exit with 'q' and use: pbpaste | textsplit-tui\n• Or use: task run-tui-paste\n• Or type small text here directly"
 	}
 
 	// Truncate display if too long for the input box
@@ -246,10 +235,19 @@ func (m model) renderInputView() string {
 	}
 	content = append(content, helpStyle.Render(charCount))
 
-	// Instructions for pasting
+	// Warning about large paste
 	if len(m.inputText) == 0 {
-		pasteInstructions := "💡 To paste large text: Copy your text from another app, then paste here with Cmd+V (Mac) or Ctrl+V (Windows/Linux)"
-		content = append(content, instructionStyle.Render(pasteInstructions))
+		warning := "⚠️  Large paste doesn't work reliably in TUI mode. For best results with large text:"
+		content = append(content, warningStyle.Render(warning))
+		
+		methods := []string{
+			"1. Exit (q) and use: pbpaste | textsplit-tui",
+			"2. Or run: task run-tui-paste",
+			"3. Or echo 'your text' | textsplit-tui",
+		}
+		for _, method := range methods {
+			content = append(content, instructionStyle.Render(method))
+		}
 	}
 
 	// Split button
@@ -257,7 +255,7 @@ func (m model) renderInputView() string {
 	if len(m.inputText) > 0 {
 		splitButton = activeButtonStyle.Render("Press ENTER to Split")
 	} else {
-		splitButton = buttonStyle.Render("Paste text first, then press ENTER")
+		splitButton = buttonStyle.Render("Load text first (see instructions above)")
 	}
 	content = append(content, splitButton)
 
@@ -309,15 +307,15 @@ func (m model) renderHelp() string {
 
 	if m.currentView == 0 {
 		helpLines = []string{
-			"📋 Paste large text (Cmd+V) and press ENTER to split",
+			"📋 For large text: Exit (q) and use pbpaste | textsplit-tui",
 			"🔄 R to reset | ↑/↓ to adjust chunk size",
-			"❌ Q or Ctrl+C to quit",
+			"❌ Q to quit",
 		}
 	} else {
 		helpLines = []string{
 			"📄 All chunks displayed | Select and copy any section",
 			"🔄 TAB back to input | R to reset | ↑/↓ adjust size",
-			"❌ Q or Ctrl+C to quit",
+			"❌ Q to quit",
 		}
 	}
 
@@ -379,10 +377,13 @@ func main() {
 	stat, err := os.Stdin.Stat()
 	if err == nil && (stat.Mode()&os.ModeCharDevice) == 0 {
 		// There's piped input, read it
-		var buf strings.Builder
-		_, err := io.Copy(&buf, os.Stdin)
-		if err == nil {
-			initialText = strings.TrimSpace(buf.String())
+		scanner := bufio.NewScanner(os.Stdin)
+		var lines []string
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+		if err := scanner.Err(); err == nil {
+			initialText = strings.Join(lines, "\n")
 		}
 	}
 

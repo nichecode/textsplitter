@@ -136,6 +136,12 @@ tasks:
           cat | ./{{.TUI_NAME}} {{.TUI_ARGS}}
         fi
 
+  run-easy:
+    desc: 🚀 Easy interactive text input (best for large text)
+    deps: [build-tui]
+    cmds:
+      - ./textsplit-easy {{.CLI_ARGS}}
+
   demo:
     desc: 🎭 Run a quick demo
     deps: [build-cli]

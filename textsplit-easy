@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Text Splitter - Easy wrapper for large text input
+# This script provides an easy way to input large text for splitting
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TUI_BINARY="$SCRIPT_DIR/textsplit-tui"
+CLI_BINARY="$SCRIPT_DIR/textsplit"
+
+# Default chunk size
+CHUNK_SIZE=3000
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -s|--size)
+            CHUNK_SIZE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Text Splitter - Easy large text input"
+            echo ""
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "Options:"
+            echo "  -s, --size SIZE    Set chunk size (default: 3000)"
+            echo "  -h, --help         Show this help"
+            echo ""
+            echo "Methods to input large text:"
+            echo "  1. From clipboard:     $0"
+            echo "  2. From file:          $0 < yourfile.txt"
+            echo "  3. Pipe from command:  echo 'text' | $0"
+            echo "  4. Interactive paste:  $0 (then paste when prompted)"
+            echo ""
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use -h for help"
+            exit 1
+            ;;
+    esac
+done
+
+echo "📝 Text Splitter for Copilot"
+echo "Chunk size: $CHUNK_SIZE characters"
+echo ""
+
+# Check if input is available from stdin
+if [ -t 0 ]; then
+    # No piped input, interactive mode
+    echo "Choose input method:"
+    echo "1. Paste from clipboard"
+    echo "2. Enter text manually"
+    echo "3. Read from file"
+    echo ""
+    read -p "Enter choice (1-3): " choice
+    echo ""
+    
+    case $choice in
+        1)
+            echo "📋 Reading from clipboard..."
+            if command -v pbpaste >/dev/null 2>&1; then
+                pbpaste | "$TUI_BINARY" "$CHUNK_SIZE"
+            elif command -v xclip >/dev/null 2>&1; then
+                xclip -selection clipboard -o | "$TUI_BINARY" "$CHUNK_SIZE"
+            elif command -v powershell.exe >/dev/null 2>&1; then
+                powershell.exe -command "Get-Clipboard" | "$TUI_BINARY" "$CHUNK_SIZE"
+            else
+                echo "❌ No clipboard tool found (pbpaste, xclip, or powershell)"
+                echo "Please paste your text below and press Ctrl+D when done:"
+                cat | "$TUI_BINARY" "$CHUNK_SIZE"
+            fi
+            ;;
+        2)
+            echo "📝 Paste or type your text below, then press Ctrl+D when done:"
+            cat | "$TUI_BINARY" "$CHUNK_SIZE"
+            ;;
+        3)
+            read -p "Enter file path: " filepath
+            if [ -f "$filepath" ]; then
+                cat "$filepath" | "$TUI_BINARY" "$CHUNK_SIZE"
+            else
+                echo "❌ File not found: $filepath"
+                exit 1
+            fi
+            ;;
+        *)
+            echo "❌ Invalid choice"
+            exit 1
+            ;;
+    esac
+else
+    # Input from stdin (piped)
+    "$TUI_BINARY" "$CHUNK_SIZE"
+fi

@@ -2,8 +2,6 @@ version: '3'
 
 vars:
   APP_NAME: textsplitter
-  CLI_NAME: textsplit
-  TUI_NAME: textsplit-tui
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
   BUILD_TIME:
@@ -27,57 +25,55 @@ tasks:
       - go mod verify
 
   build:
-    desc: 🔨 Build both CLI and TUI versions
-    deps: [build-cli, build-tui]
-
-  build-cli:
-    desc: ⚡ Build CLI version
+    desc: 🔨 Build textsplitter
     cmds:
-      - echo "⚡ Building CLI version..."
-      - go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o {{.CLI_NAME}} main.go
+      - echo "🔨 Building textsplitter..."
+      - go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o {{.APP_NAME}} ./cmd/{{.APP_NAME}}
     sources:
-      - main.go
+      - cmd/textsplitter/main.go
+      - cmd/textsplitter/web/index.html
       - go.mod
       - go.sum
     generates:
-      - "{{.CLI_NAME}}"
-
-  build-tui:
-    desc: 🎨 Build TUI version
-    cmds:
-      - echo "🎨 Building TUI version..."
-      - go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o {{.TUI_NAME}} tui.go
-    sources:
-      - tui.go
-      - go.mod
-      - go.sum
-    generates:
-      - "{{.TUI_NAME}}"
+      - "{{.APP_NAME}}"
 
   install:
-    desc: 📲 Install binaries to /usr/local/bin
+    desc: 📲 Install textsplitter to /usr/local/bin
     deps: [build]
     cmds:
-      - echo "📲 Installing binaries..."
-      - sudo cp {{.CLI_NAME}} /usr/local/bin/
-      - sudo cp {{.TUI_NAME}} /usr/local/bin/
-      - echo "✅ Installed {{.CLI_NAME}} and {{.TUI_NAME}} to /usr/local/bin"
+      - echo "📲 Installing textsplitter..."
+      - sudo cp {{.APP_NAME}} /usr/local/bin/
+      - echo "✅ Installed {{.APP_NAME}} to /usr/local/bin"
+      - echo "💡 Now you can run 'textsplitter' from anywhere!"
 
   install-local:
-    desc: 📲 Install binaries to ~/bin (no sudo required)
+    desc: 📲 Install textsplitter to ~/bin (no sudo required)
     deps: [build]
     cmds:
       - mkdir -p ~/bin
-      - cp {{.CLI_NAME}} ~/bin/
-      - cp {{.TUI_NAME}} ~/bin/
-      - echo "✅ Installed {{.CLI_NAME}} and {{.TUI_NAME}} to ~/bin"
+      - cp {{.APP_NAME}} ~/bin/
+      - echo "✅ Installed {{.APP_NAME}} to ~/bin"
       - echo "💡 Make sure ~/bin is in your PATH"
+      - echo "💡 Now you can run 'textsplitter' from anywhere!"
+
+  run:
+    desc: 🚀 Run textsplitter (opens browser automatically)
+    deps: [build]
+    cmds:
+      - echo "🚀 Starting TextSplitter..."
+      - ./{{.APP_NAME}} {{.CLI_ARGS}}
+
+  run-port:
+    desc: 🚀 Run textsplitter on custom port (e.g., task run-port -- --port 8081)
+    deps: [build]
+    cmds:
+      - ./{{.APP_NAME}} {{.CLI_ARGS}}
 
   clean:
     desc: 🧹 Clean up build artifacts
     cmds:
       - echo "🧹 Cleaning up..."
-      - rm -f {{.CLI_NAME}} {{.TUI_NAME}}
+      - rm -f {{.APP_NAME}}
       - rm -rf dist/
       - go clean
 
@@ -99,55 +95,6 @@ tasks:
     cmds:
       - echo "🔍 Linting code..."
       - golangci-lint run || echo "💡 Install golangci-lint for better linting"
-
-  dev:
-    desc: 🚀 Development mode (watch and rebuild)
-    deps: [build]
-    cmds:
-      - echo "🚀 Development mode - files will be rebuilt on change"
-      - echo "💡 Run 'task run-tui' or 'task run-cli' in another terminal"
-
-  run-cli:
-    desc: ⚡ Run CLI version
-    deps: [build-cli]
-    cmds:
-      - echo "⚡ Running CLI version..."
-      - ./{{.CLI_NAME}} {{.CLI_ARGS}}
-
-  run-tui:
-    desc: 🎨 Run TUI version
-    deps: [build-tui]
-    cmds:
-      - echo "🎨 Running TUI version..."
-      - ./{{.TUI_NAME}} {{.TUI_ARGS}}
-
-  run-tui-paste:
-    desc: 📋 Run TUI with clipboard content (better for large text)
-    deps: [build-tui]
-    cmds:
-      - echo "📋 Reading from clipboard and running TUI..."
-      - |
-        if command -v pbpaste >/dev/null 2>&1; then
-          pbpaste | ./{{.TUI_NAME}} {{.TUI_ARGS}}
-        elif command -v xclip >/dev/null 2>&1; then
-          xclip -selection clipboard -o | ./{{.TUI_NAME}} {{.TUI_ARGS}}
-        else
-          echo "📋 Copy your text to clipboard, then paste it here and press Ctrl+D:"
-          cat | ./{{.TUI_NAME}} {{.TUI_ARGS}}
-        fi
-
-  run-easy:
-    desc: 🚀 Easy interactive text input (best for large text)
-    deps: [build-tui]
-    cmds:
-      - ./textsplit-easy {{.CLI_ARGS}}
-
-  demo:
-    desc: 🎭 Run a quick demo
-    deps: [build-cli]
-    cmds:
-      - echo "🎭 Running demo with sample text..."
-      - echo "This is a demonstration of the text splitter tool for Microsoft Copilot. It will intelligently break large documents into smaller chunks that fit within Copilot's character limits. The tool tries to break at sentence boundaries first, then paragraphs, then lines, and finally words to maintain readability and context. This makes it perfect for processing large documents through AI tools that have character restrictions." | ./{{.CLI_NAME}} -size 150
 
   release:
     desc: 📦 Build release versions for multiple platforms
@@ -181,8 +128,7 @@ tasks:
   release-build:
     internal: true
     cmds:
-      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o dist/{{.CLI_NAME}}-{{.SUFFIX}}{{.EXT}} main.go
-      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o dist/{{.TUI_NAME}}-{{.SUFFIX}}{{.EXT}} tui.go
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o dist/{{.APP_NAME}}-{{.SUFFIX}}{{.EXT}} ./cmd/{{.APP_NAME}}
 
   check:
     desc: 🔎 Run all checks (fmt, lint, test)
@@ -194,12 +140,12 @@ tasks:
   setup:
     desc: 🛠️  Initial setup for development
     cmds:
-      - echo "🛠️ Setting up development environment..."
+      - echo "🛠️ Setting up TextSplitter development environment..."
       - task: deps
       - task: build
-      - echo "✅ Setup complete! Run 'task run-tui' to try it out"
-
-
+      - echo "✅ Setup complete!"
+      - echo "💡 Run 'task run' to start the web interface"
+      - echo "💡 Run 'task install-local' to install globally"
 
   update:
     desc: 🔄 Update dependencies

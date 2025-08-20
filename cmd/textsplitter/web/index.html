@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TextSplitter for Copilot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Variable', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #f5f5f5;
+            background: #1e1e1e;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #2d2d30;
+            border-radius: 12px;
+            border: 1px solid #3c3c3c;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            background: #252526;
+            color: #f5f5f5;
+            padding: 24px 32px;
+            border-bottom: 1px solid #3c3c3c;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header p {
+            font-size: 0.95rem;
+            color: #cccccc;
+        }
+
+        .copilot-icon {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 50%, #ffa500 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .main {
+            padding: 32px;
+        }
+
+        .input-section {
+            margin-bottom: 32px;
+        }
+
+        .control-bar {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            padding: 16px 20px;
+            background: #252526;
+            border-radius: 8px;
+            border: 1px solid #3c3c3c;
+        }
+
+        .chunk-size-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chunk-size-control label {
+            font-weight: 500;
+            color: #cccccc;
+            font-size: 0.9rem;
+        }
+
+        .chunk-size-control input {
+            width: 100px;
+            padding: 8px 12px;
+            border: 1px solid #3c3c3c;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: center;
+            background: #1e1e1e;
+            color: #f5f5f5;
+        }
+
+        .chunk-size-control input:focus {
+            outline: none;
+            border-color: #ff8c00;
+            box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.1);
+        }
+
+        .stats {
+            font-size: 0.85rem;
+            color: #999999;
+            font-weight: 400;
+        }
+
+        .textarea-container {
+            position: relative;
+        }
+
+        #inputText {
+            width: 100%;
+            min-height: 200px;
+            padding: 20px;
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', Monaco, monospace;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+            background: #1e1e1e;
+            color: #f5f5f5;
+        }
+
+        #inputText:focus {
+            outline: none;
+            border-color: #ff8c00;
+            box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.1);
+        }
+
+        #inputText::placeholder {
+            color: #666666;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
+            color: white;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 140, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: #3c3c3c;
+            color: #cccccc;
+            border: 1px solid #525252;
+        }
+
+        .btn-secondary:hover {
+            background: #484848;
+            color: #ffffff;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .output-section {
+            display: none;
+            margin-top: 32px;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #3c3c3c;
+        }
+
+        .output-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .output-stats {
+            font-size: 0.85rem;
+            color: #999999;
+            font-weight: 400;
+        }
+
+        .chunks-container {
+            display: grid;
+            gap: 20px;
+        }
+
+        .chunk {
+            background: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .chunk:hover {
+            border-color: #ff8c00;
+            box-shadow: 0 2px 8px rgba(255, 140, 0, 0.1);
+        }
+
+        .chunk-header {
+            background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
+            color: white;
+            padding: 12px 16px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .chunk-content {
+            padding: 20px;
+            font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', Monaco, monospace;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #1e1e1e;
+            cursor: text;
+            user-select: text;
+            color: #f5f5f5;
+            font-size: 0.85rem;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .copy-btn.copied {
+            background: #10b981;
+            border-color: #10b981;
+        }
+
+        .instructions {
+            background: #264038;
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .instructions h3 {
+            color: #10b981;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .instructions p {
+            color: #cccccc;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .instructions strong {
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+
+            .main {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .control-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 24px;
+            color: #999999;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #3c3c3c;
+            border-radius: 50%;
+            border-top-color: #ff8c00;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <div class="copilot-icon">✂</div>
+                TextSplitter for Copilot
+            </h1>
+            <p>Split large documents into chunks that fit within Microsoft Copilot's character limits</p>
+        </div>
+
+        <div class="main">
+            <div class="input-section">
+                <div class="control-bar">
+                    <div class="chunk-size-control">
+                        <label for="chunkSize">Chunk Size:</label>
+                        <input type="number" id="chunkSize" value="3000" min="500" max="8000" step="100">
+                        <span>characters</span>
+                    </div>
+                    <div class="stats" id="inputStats">
+                        Ready to split text
+                    </div>
+                </div>
+
+                <div class="textarea-container">
+                    <textarea 
+                        id="inputText" 
+                        placeholder="Paste your large text here...
+
+This tool will intelligently split your text at sentence boundaries, paragraphs, or word breaks to maintain readability while staying within Copilot's character limits.
+
+Perfect for:
+• Large documents
+• Research papers  
+• Code files
+• Any text over 8,000 characters
+
+Just paste and click Split!"
+                    ></textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="splitBtn" disabled>
+                        ✂️ Split Text
+                    </button>
+                    <button class="btn btn-secondary" id="clearBtn">
+                        🔄 Clear
+                    </button>
+                    <button class="btn btn-secondary" id="pasteBtn">
+                        📋 Paste from Clipboard
+                    </button>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                Splitting text...
+            </div>
+
+            <div class="output-section" id="outputSection">
+                <div class="instructions">
+                    <h3>💡 How to use with Microsoft Copilot:</h3>
+                    <p><strong>1.</strong> Copy each chunk below (use the copy buttons)</p>
+                    <p><strong>2.</strong> Paste into Copilot with context like:</p>
+                    <p style="margin-left: 20px;">• "This is part 1/3 of a document. Please process and wait for remaining parts."</p>
+                    <p style="margin-left: 20px;">• "This is part 2/3, continuing from the previous part."</p>
+                    <p style="margin-left: 20px;">• "This is the final part 3/3. Please analyze the complete document."</p>
+                </div>
+
+                <div class="output-header">
+                    <div class="output-title">📊 Split Results</div>
+                    <div class="output-stats" id="outputStats"></div>
+                </div>
+
+                <div class="chunks-container" id="chunksContainer">
+                    <!-- Chunks will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const inputText = document.getElementById('inputText');
+        const chunkSize = document.getElementById('chunkSize');
+        const splitBtn = document.getElementById('splitBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const pasteBtn = document.getElementById('pasteBtn');
+        const inputStats = document.getElementById('inputStats');
+        const outputSection = document.getElementById('outputSection');
+        const outputStats = document.getElementById('outputStats');
+        const chunksContainer = document.getElementById('chunksContainer');
+        const loading = document.getElementById('loading');
+
+        // Update stats as user types
+        inputText.addEventListener('input', updateInputStats);
+        chunkSize.addEventListener('input', updateInputStats);
+
+        function updateInputStats() {
+            const text = inputText.value;
+            const size = parseInt(chunkSize.value) || 3000;
+            
+            if (text.length === 0) {
+                inputStats.textContent = 'Ready to split text';
+                splitBtn.disabled = true;
+                return;
+            }
+
+            const estimatedChunks = Math.ceil(text.length / size);
+            inputStats.innerHTML = `
+                📊 ${text.length.toLocaleString()} characters | 
+                Estimated ${estimatedChunks} chunk${estimatedChunks !== 1 ? 's' : ''}
+            `;
+            splitBtn.disabled = false;
+        }
+
+        // Split text function
+        function splitText(text, maxSize) {
+            if (text.length <= maxSize) {
+                return [text];
+            }
+
+            const chunks = [];
+            let remaining = text;
+
+            while (remaining.length > 0) {
+                if (remaining.length <= maxSize) {
+                    chunks.push(remaining);
+                    break;
+                }
+
+                let breakPoint = maxSize;
+                const chunk = remaining.substring(0, breakPoint);
+
+                // Try to break at sentence boundary
+                const lastSentence = Math.max(
+                    chunk.lastIndexOf('.'),
+                    chunk.lastIndexOf('!'),
+                    chunk.lastIndexOf('?')
+                );
+                if (lastSentence !== -1 && lastSentence > maxSize / 2) {
+                    breakPoint = lastSentence + 1;
+                } else {
+                    // Try paragraph boundary
+                    const lastParagraph = chunk.lastIndexOf('\n\n');
+                    if (lastParagraph !== -1 && lastParagraph > maxSize / 3) {
+                        breakPoint = lastParagraph + 2;
+                    } else {
+                        // Try line boundary
+                        const lastNewline = chunk.lastIndexOf('\n');
+                        if (lastNewline !== -1 && lastNewline > maxSize / 3) {
+                            breakPoint = lastNewline + 1;
+                        } else {
+                            // Try word boundary
+                            const lastSpace = chunk.lastIndexOf(' ');
+                            if (lastSpace !== -1 && lastSpace > maxSize / 2) {
+                                breakPoint = lastSpace + 1;
+                            }
+                        }
+                    }
+                }
+
+                chunks.push(remaining.substring(0, breakPoint).trim());
+                remaining = remaining.substring(breakPoint).trim();
+            }
+
+            return chunks;
+        }
+
+        // Copy to clipboard function
+        async function copyToClipboard(text, button) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                
+                button.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    button.textContent = '📋 Copy';
+                }, 2000);
+            }
+        }
+
+        // Split button click handler
+        splitBtn.addEventListener('click', () => {
+            const text = inputText.value.trim();
+            const size = parseInt(chunkSize.value) || 3000;
+
+            if (!text) return;
+
+            loading.classList.add('show');
+            outputSection.style.display = 'none';
+
+            // Small delay to show loading state
+            setTimeout(() => {
+                const chunks = splitText(text, size);
+                
+                // Update stats
+                outputStats.innerHTML = `
+                    ✂️ ${chunks.length} chunk${chunks.length !== 1 ? 's' : ''} | 
+                    ${text.length.toLocaleString()} total characters
+                `;
+
+                // Clear previous chunks
+                chunksContainer.innerHTML = '';
+
+                // Create chunk elements
+                chunks.forEach((chunk, index) => {
+                    const chunkElement = document.createElement('div');
+                    chunkElement.className = 'chunk';
+                    chunkElement.innerHTML = `
+                        <div class="chunk-header">
+                            <span>📄 PART ${index + 1}/${chunks.length} (${chunk.length} characters)</span>
+                            <button class="copy-btn" onclick="copyToClipboard(\`${chunk.replace(/`/g, '\\`')}\`, this)">
+                                📋 Copy
+                            </button>
+                        </div>
+                        <div class="chunk-content">${chunk}</div>
+                    `;
+                    chunksContainer.appendChild(chunkElement);
+                });
+
+                loading.classList.remove('show');
+                outputSection.style.display = 'block';
+                outputSection.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+        });
+
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            inputText.value = '';
+            outputSection.style.display = 'none';
+            updateInputStats();
+            inputText.focus();
+        });
+
+        // Paste button
+        pasteBtn.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                inputText.value = text;
+                updateInputStats();
+                inputText.focus();
+            } catch (err) {
+                alert('Unable to access clipboard. Please paste manually.');
+                inputText.focus();
+            }
+        });
+
+        // Make copyToClipboard globally available
+        window.copyToClipboard = copyToClipboard;
+
+        // Initialize
+        updateInputStats();
+    </script>
+</body>
+</html>

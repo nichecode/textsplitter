@@ -1,0 +1,23 @@
+# Binaries
+textsplit
+textsplit.exe
+textsplitter
+textsplitter.exe
+
+# Go specific
+*.test
+*.prof
+coverage.out
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

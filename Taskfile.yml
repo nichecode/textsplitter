@@ -1,0 +1,215 @@
+version: '3'
+
+vars:
+  APP_NAME: textsplitter
+  CLI_NAME: textsplit
+  TUI_NAME: textsplit-tui
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  BUILD_TIME:
+    sh: date -u '+%Y-%m-%d_%H:%M:%S'
+
+env:
+  CGO_ENABLED: 0
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  deps:
+    desc: 📦 Install dependencies
+    cmds:
+      - echo "📦 Installing dependencies..."
+      - go mod tidy
+      - go mod download
+      - go mod verify
+
+  build:
+    desc: 🔨 Build both CLI and TUI versions
+    deps: [build-cli, build-tui]
+
+  build-cli:
+    desc: ⚡ Build CLI version
+    cmds:
+      - echo "⚡ Building CLI version..."
+      - go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o {{.CLI_NAME}} main.go
+    sources:
+      - main.go
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.CLI_NAME}}"
+
+  build-tui:
+    desc: 🎨 Build TUI version
+    cmds:
+      - echo "🎨 Building TUI version..."
+      - go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o {{.TUI_NAME}} tui.go
+    sources:
+      - tui.go
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.TUI_NAME}}"
+
+  install:
+    desc: 📲 Install binaries to /usr/local/bin
+    deps: [build]
+    cmds:
+      - echo "📲 Installing binaries..."
+      - sudo cp {{.CLI_NAME}} /usr/local/bin/
+      - sudo cp {{.TUI_NAME}} /usr/local/bin/
+      - echo "✅ Installed {{.CLI_NAME}} and {{.TUI_NAME}} to /usr/local/bin"
+
+  install-local:
+    desc: 📲 Install binaries to ~/bin (no sudo required)
+    deps: [build]
+    cmds:
+      - mkdir -p ~/bin
+      - cp {{.CLI_NAME}} ~/bin/
+      - cp {{.TUI_NAME}} ~/bin/
+      - echo "✅ Installed {{.CLI_NAME}} and {{.TUI_NAME}} to ~/bin"
+      - echo "💡 Make sure ~/bin is in your PATH"
+
+  clean:
+    desc: 🧹 Clean up build artifacts
+    cmds:
+      - echo "🧹 Cleaning up..."
+      - rm -f {{.CLI_NAME}} {{.TUI_NAME}}
+      - rm -rf dist/
+      - go clean
+
+  test:
+    desc: 🧪 Run tests
+    cmds:
+      - echo "🧪 Running tests..."
+      - go test -v ./...
+
+  fmt:
+    desc: 🎯 Format code
+    cmds:
+      - echo "🎯 Formatting code..."
+      - go fmt ./...
+      - goimports -w . 2>/dev/null || true
+
+  lint:
+    desc: 🔍 Lint code
+    cmds:
+      - echo "🔍 Linting code..."
+      - golangci-lint run || echo "💡 Install golangci-lint for better linting"
+
+  dev:
+    desc: 🚀 Development mode (watch and rebuild)
+    deps: [build]
+    cmds:
+      - echo "🚀 Development mode - files will be rebuilt on change"
+      - echo "💡 Run 'task run-tui' or 'task run-cli' in another terminal"
+
+  run-cli:
+    desc: ⚡ Run CLI version
+    deps: [build-cli]
+    cmds:
+      - echo "⚡ Running CLI version..."
+      - ./{{.CLI_NAME}} {{.CLI_ARGS}}
+
+  run-tui:
+    desc: 🎨 Run TUI version
+    deps: [build-tui]
+    cmds:
+      - echo "🎨 Running TUI version..."
+      - ./{{.TUI_NAME}} {{.TUI_ARGS}}
+
+  demo:
+    desc: 🎭 Run a quick demo
+    deps: [build-cli]
+    cmds:
+      - echo "🎭 Running demo with sample text..."
+      - echo "This is a demonstration of the text splitter tool for Microsoft Copilot. It will intelligently break large documents into smaller chunks that fit within Copilot's character limits. The tool tries to break at sentence boundaries first, then paragraphs, then lines, and finally words to maintain readability and context. This makes it perfect for processing large documents through AI tools that have character restrictions." | ./{{.CLI_NAME}} -size 150
+
+  release:
+    desc: 📦 Build release versions for multiple platforms
+    cmds:
+      - echo "📦 Building release versions..."
+      - mkdir -p dist
+      - task: release-build
+        vars:
+          GOOS: darwin
+          GOARCH: amd64
+          SUFFIX: darwin-amd64
+      - task: release-build
+        vars:
+          GOOS: darwin
+          GOARCH: arm64
+          SUFFIX: darwin-arm64
+      - task: release-build
+        vars:
+          GOOS: linux
+          GOARCH: amd64
+          SUFFIX: linux-amd64
+      - task: release-build
+        vars:
+          GOOS: windows
+          GOARCH: amd64
+          SUFFIX: windows-amd64
+          EXT: .exe
+      - echo "✅ Release builds completed in dist/"
+      - ls -la dist/
+
+  release-build:
+    internal: true
+    cmds:
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o dist/{{.CLI_NAME}}-{{.SUFFIX}}{{.EXT}} main.go
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags "-X main.version={{.VERSION}} -X main.buildTime={{.BUILD_TIME}}" -o dist/{{.TUI_NAME}}-{{.SUFFIX}}{{.EXT}} tui.go
+
+  check:
+    desc: 🔎 Run all checks (fmt, lint, test)
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+
+  setup:
+    desc: 🛠️  Initial setup for development
+    cmds:
+      - echo "🛠️ Setting up development environment..."
+      - task: deps
+      - task: build
+      - echo "✅ Setup complete! Run 'task run-tui' to try it out"
+
+  help:
+    desc: 📚 Show detailed help
+    cmds:
+      - echo "📚 Text Splitter for Copilot - Task Commands"
+      - echo ""
+      - echo "🚀 Quick Start:"
+      - echo "  task setup     # First time setup"
+      - echo "  task run-tui   # Run the interactive UI"
+      - echo "  task run-cli   # Run the command line version"
+      - echo ""
+      - echo "🔨 Building:"
+      - echo "  task build     # Build both versions"
+      - echo "  task install   # Install to /usr/local/bin (requires sudo)"
+      - echo "  task install-local # Install to ~/bin (no sudo)"
+      - echo ""
+      - echo "🧪 Development:"
+      - echo "  task test      # Run tests"
+      - echo "  task fmt       # Format code"
+      - echo "  task check     # Run all checks"
+      - echo "  task demo      # Quick demonstration"
+      - echo ""
+      - echo "📦 Release:"
+      - echo "  task release   # Build for all platforms"
+      - echo ""
+      - echo "💡 Examples:"
+      - echo "  task run-cli CLI_ARGS='-size 5000 -file mytext.txt'"
+      - echo "  task run-tui TUI_ARGS='7500'"
+
+  update:
+    desc: 🔄 Update dependencies
+    cmds:
+      - echo "🔄 Updating dependencies..."
+      - go get -u ./...
+      - go mod tidy
+      - echo "✅ Dependencies updated"

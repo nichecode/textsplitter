@@ -10,6 +10,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	version   = "dev"
+	buildTime = "unknown"
+)
+
 // Styles
 var (
 	titleStyle = lipgloss.NewStyle().

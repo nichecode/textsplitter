@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+var (
+	version   = "dev"
+	buildTime = "unknown"
+)
+
 func main() {
 	// Command line flags
 	chunkSize := flag.Int("size", 3000, "Maximum characters per chunk")

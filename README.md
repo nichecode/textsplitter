@@ -39,15 +39,16 @@ Traditional CLI tool for scripting and automation:
 git clone https://github.com/nichecode/textsplitter.git
 cd textsplitter
 
-# Install dependencies
-make deps
+# One-command setup (recommended)
+task setup
 
-# Build both versions
-make all
+# Or install dependencies and build manually
+go mod tidy
+task build
 
 # Or build individually
-make build-tui  # Terminal UI version
-make build-cli  # Command line version
+task build-tui  # Terminal UI version
+task build-cli  # Command line version
 ```
 
 ## Usage
@@ -152,18 +153,30 @@ Summary: Split into 3 parts
 
 ## Development
 
+### Quick Start with Task
 ```bash
-# Run tests
-make test
+# See all available tasks
+task --list
 
-# Run TUI in development mode
-make run-tui
+# Run tests and development tools
+task test       # Run tests
+task run-tui    # Run TUI in development mode
+task run-cli    # Run CLI in development mode
+task demo       # Quick demonstration
+task release    # Build for multiple platforms
 
-# Run CLI in development mode
-make run-cli
+# Development helpers
+task fmt        # Format code
+task check      # Run all checks (fmt, lint, test)
+task clean      # Clean up build artifacts
+```
 
-# Build for multiple platforms
-make release
+### Traditional Make (still supported)
+```bash
+make test       # Run tests
+make run-tui    # Run TUI in development mode
+make run-cli    # Run CLI in development mode
+make release    # Build for multiple platforms
 ```
 
 ## Building from Source

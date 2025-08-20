@@ -13,6 +13,9 @@ dist/
 coverage.out
 go.sum
 
+# Task runner cache
+.task/
+
 # IDE files
 .vscode/
 .idea/

@@ -156,31 +156,25 @@ Summary: Split into 3 parts
 
 ## Development
 
-### Quick Start with Task
 ```bash
 # See all available tasks
 task --list
 
-# Run tests and development tools
-task test       # Run tests
-task run-tui    # Run TUI in development mode
-task run-cli    # Run CLI in development mode
+# Essential commands
+task setup      # First time setup
+task run-tui    # Run the interactive UI
+task run-cli    # Run command line version  
 task demo       # Quick demonstration
-task release    # Build for multiple platforms
 
-# Development helpers
+# Development workflow
+task test       # Run tests
 task fmt        # Format code
 task check      # Run all checks (fmt, lint, test)
 task clean      # Clean up build artifacts
+task release    # Build for multiple platforms
 ```
 
-### Traditional Make (still supported)
-```bash
-make test       # Run tests
-make run-tui    # Run TUI in development mode
-make run-cli    # Run CLI in development mode
-make release    # Build for multiple platforms
-```
+
 
 ## Building from Source
 

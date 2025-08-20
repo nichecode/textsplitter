@@ -235,12 +235,24 @@
             border: 1px solid #3c3c3c;
             border-radius: 8px;
             overflow: hidden;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
 
         .chunk:hover {
             border-color: #ff8c00;
             box-shadow: 0 2px 8px rgba(255, 140, 0, 0.1);
+        }
+
+        .chunk.completed {
+            opacity: 0.5;
+            background: #1e1e1e;
+            border-color: #10b981;
+            transform: scale(0.98);
+        }
+
+        .chunk.completed:hover {
+            border-color: #10b981;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
         }
 
         .chunk-header {
@@ -252,6 +264,42 @@
             justify-content: space-between;
             align-items: center;
             font-size: 0.9rem;
+        }
+
+        .chunk.completed .chunk-header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .chunk-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chunk-checkbox {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .chunk-checkbox:checked {
+            background: #ffffff;
+            border-color: #ffffff;
+        }
+
+        .chunk-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: -2px;
+            left: 2px;
+            color: #10b981;
+            font-size: 14px;
+            font-weight: bold;
         }
 
         .chunk-content {
@@ -436,7 +484,8 @@ Just paste and click Split!"
                 <div class="instructions">
                     <h3>💡 How to use with Microsoft Copilot:</h3>
                     <p><strong>1.</strong> Copy each chunk below (use the copy buttons)</p>
-                    <p><strong>2.</strong> Paste into Copilot with context like:</p>
+                    <p><strong>2.</strong> Check the box next to each chunk as you copy it to track progress</p>
+                    <p><strong>3.</strong> Paste into Copilot with context like:</p>
                     <p style="margin-left: 20px;">• "This is part 1/3 of a document. Please process and wait for remaining parts."</p>
                     <p style="margin-left: 20px;">• "This is part 2/3, continuing from the previous part."</p>
                     <p style="margin-left: 20px;">• "This is the final part 3/3. Please analyze the complete document."</p>
@@ -599,9 +648,12 @@ Just paste and click Split!"
                     chunkElement.innerHTML = `
                         <div class="chunk-header">
                             <span>📄 PART ${index + 1}/${chunks.length} (${chunk.length} characters)</span>
-                            <button class="copy-btn" onclick="copyToClipboard(\`${chunk.replace(/`/g, '\\`')}\`, this)">
-                                📋 Copy
-                            </button>
+                            <div class="chunk-controls">
+                                <input type="checkbox" class="chunk-checkbox" onchange="toggleChunkCompleted(this)" title="Mark as copied">
+                                <button class="copy-btn" onclick="copyToClipboard(\`${chunk.replace(/`/g, '\\`')}\`, this)">
+                                    📋 Copy
+                                </button>
+                            </div>
                         </div>
                         <div class="chunk-content">${chunk}</div>
                     `;
@@ -635,8 +687,19 @@ Just paste and click Split!"
             }
         });
 
-        // Make copyToClipboard globally available
+        // Toggle chunk completed state
+        function toggleChunkCompleted(checkbox) {
+            const chunk = checkbox.closest('.chunk');
+            if (checkbox.checked) {
+                chunk.classList.add('completed');
+            } else {
+                chunk.classList.remove('completed');
+            }
+        }
+
+        // Make functions globally available
         window.copyToClipboard = copyToClipboard;
+        window.toggleChunkCompleted = toggleChunkCompleted;
 
         // Initialize
         updateInputStats();

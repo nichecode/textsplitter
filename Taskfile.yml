@@ -178,33 +178,7 @@ tasks:
       - task: build
       - echo "✅ Setup complete! Run 'task run-tui' to try it out"
 
-  help:
-    desc: 📚 Show detailed help
-    cmds:
-      - echo "📚 Text Splitter for Copilot - Task Commands"
-      - echo ""
-      - echo "🚀 Quick Start:"
-      - echo "  task setup     # First time setup"
-      - echo "  task run-tui   # Run the interactive UI"
-      - echo "  task run-cli   # Run the command line version"
-      - echo ""
-      - echo "🔨 Building:"
-      - echo "  task build     # Build both versions"
-      - echo "  task install   # Install to /usr/local/bin (requires sudo)"
-      - echo "  task install-local # Install to ~/bin (no sudo)"
-      - echo ""
-      - echo "🧪 Development:"
-      - echo "  task test      # Run tests"
-      - echo "  task fmt       # Format code"
-      - echo "  task check     # Run all checks"
-      - echo "  task demo      # Quick demonstration"
-      - echo ""
-      - echo "📦 Release:"
-      - echo "  task release   # Build for all platforms"
-      - echo ""
-      - echo "💡 Examples:"
-      - echo "  task run-cli CLI_ARGS='-size 5000 -file mytext.txt'"
-      - echo "  task run-tui TUI_ARGS='7500'"
+
 
   update:
     desc: 🔄 Update dependencies

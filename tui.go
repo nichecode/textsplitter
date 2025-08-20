@@ -27,14 +27,21 @@ var (
 			BorderForeground(lipgloss.Color("#7C3AED")).
 			Padding(1).
 			Width(80).
-			Height(10)
+			Height(8)
 
-	outputBoxStyle = lipgloss.NewStyle().
+	chunkStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#059669")).
 			Padding(1).
 			Width(80).
-			MaxHeight(15)
+			MarginBottom(1)
+
+	chunkHeaderStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#059669")).
+			Background(lipgloss.Color("#F0FDF4")).
+			Padding(0, 1).
+			MarginBottom(1)
 
 	buttonStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color("#7C3AED")).
@@ -53,13 +60,15 @@ var (
 			Foreground(lipgloss.Color("#6B7280")).
 			MarginTop(1)
 
-	chunkHeaderStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#059669")).
-			MarginBottom(1)
-
 	separatorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#D1D5DB"))
+			Foreground(lipgloss.Color("#D1D5DB")).
+			Bold(true)
+
+	instructionStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#059669")).
+			Background(lipgloss.Color("#F0FDF4")).
+			Padding(0, 1).
+			MarginBottom(1)
 )
 
 type model struct {
@@ -67,13 +76,9 @@ type model struct {
 	chunks      []string
 	chunkSize   int
 	currentView int // 0 = input, 1 = output
-	currentChunk int
-	cursor      int
 	width       int
 	height      int
 }
-
-type tickMsg struct{}
 
 func (m model) Init() tea.Cmd {
 	return nil
@@ -104,18 +109,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.chunks = splitText(m.inputText, m.chunkSize)
 				if len(m.chunks) > 0 {
 					m.currentView = 1
-					m.currentChunk = 0
 				}
-			}
-
-		case "left", "h":
-			if m.currentView == 1 && m.currentChunk > 0 {
-				m.currentChunk--
-			}
-
-		case "right", "l":
-			if m.currentView == 1 && m.currentChunk < len(m.chunks)-1 {
-				m.currentChunk++
 			}
 
 		case "up":
@@ -134,18 +128,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "c":
-			if m.currentView == 1 && len(m.chunks) > 0 {
-				// Copy current chunk to clipboard (this would need clipboard library)
-				// For now, we'll just show a message
-			}
-
 		case "r":
 			// Reset
 			m.inputText = ""
 			m.chunks = []string{}
 			m.currentView = 0
-			m.currentChunk = 0
 
 		case "backspace":
 			if m.currentView == 0 && len(m.inputText) > 0 {
@@ -178,8 +165,8 @@ func (m model) View() string {
 		// Input view
 		sections = append(sections, m.renderInputView())
 	} else {
-		// Output view
-		sections = append(sections, m.renderOutputView())
+		// Output view with all chunks
+		sections = append(sections, m.renderAllChunksView())
 	}
 
 	// Help text
@@ -224,28 +211,42 @@ func (m model) renderInputView() string {
 	return lipgloss.JoinVertical(lipgloss.Left, content...)
 }
 
-func (m model) renderOutputView() string {
+func (m model) renderAllChunksView() string {
 	if len(m.chunks) == 0 {
 		return "No chunks available"
 	}
 
 	var content []string
 
-	// Navigation
-	nav := fmt.Sprintf("📊 Chunk %d of %d (← → to navigate)", m.currentChunk+1, len(m.chunks))
-	content = append(content, chunkHeaderStyle.Render(nav))
+	// Instructions
+	instructions := "💡 Select and copy text from any section below (Cmd+A selects all text in a section)"
+	content = append(content, instructionStyle.Render(instructions))
 
-	// Current chunk
-	currentChunk := m.chunks[m.currentChunk]
-	chunkInfo := fmt.Sprintf("Characters: %d", len(currentChunk))
-	content = append(content, helpStyle.Render(chunkInfo))
+	// Summary header
+	summary := fmt.Sprintf("📊 Split into %d chunks | Total: %d characters", len(m.chunks), len(m.inputText))
+	content = append(content, chunkHeaderStyle.Render(summary))
 
-	chunkBox := outputBoxStyle.Render(currentChunk)
-	content = append(content, chunkBox)
+	// Render all chunks
+	for i, chunk := range m.chunks {
+		// Chunk header
+		header := fmt.Sprintf("📄 PART %d/%d (%d characters)", i+1, len(m.chunks), len(chunk))
+		chunkHeader := chunkHeaderStyle.Render(header)
+		content = append(content, chunkHeader)
 
-	// Copy instruction
-	copyInst := "💾 Select and copy the text above (Cmd+A, Cmd+C on macOS)"
-	content = append(content, helpStyle.Render(copyInst))
+		// Chunk content in a styled box
+		chunkBox := chunkStyle.Render(chunk)
+		content = append(content, chunkBox)
+
+		// Add some spacing between chunks (except for the last one)
+		if i < len(m.chunks)-1 {
+			separator := separatorStyle.Render(strings.Repeat("─", 80))
+			content = append(content, separator)
+		}
+	}
+
+	// Final instructions
+	finalInstructions := "💾 Copy each section separately and paste into Copilot with context like: 'This is part X/Y...'"
+	content = append(content, instructionStyle.Render(finalInstructions))
 
 	return lipgloss.JoinVertical(lipgloss.Left, content...)
 }
@@ -261,8 +262,8 @@ func (m model) renderHelp() string {
 		}
 	} else {
 		helpLines = []string{
-			"← → Navigate chunks | TAB back to input",
-			"🔄 R to reset | ↑/↓ to adjust chunk size",
+			"📄 All chunks displayed | Select and copy any section",
+			"🔄 TAB back to input | R to reset | ↑/↓ adjust size",
 			"❌ Q or Ctrl+C to quit",
 		}
 	}

@@ -74,10 +74,11 @@ task build-cli  # Command line version
 
 The TUI provides a clean, visual interface where you can:
 1. Paste your large text
-2. See real-time character counts
-3. Adjust chunk size with arrow keys
-4. Navigate through generated chunks
-5. Copy each chunk individually
+2. See real-time character counts and chunk estimates
+3. Adjust chunk size with arrow keys (↑/↓)
+4. Press ENTER to split into chunks
+5. **View all chunks simultaneously** in separate, copyable sections
+6. **Select and copy any section individually** - perfect for Copilot workflow!
 
 ### ⚡ Command Line Version
 
@@ -136,15 +137,17 @@ Summary: Split into 3 parts
 ## Workflow: Microsoft Copilot Integration
 
 ### Using the TUI (Recommended)
-1. Run `./textsplit-tui`
-2. Paste your large document
-3. Press ENTER to split
-4. Use ← → to navigate chunks
-5. Select and copy each chunk (Cmd+A, Cmd+C)
-6. Paste into Copilot with context like:
+1. Run `./textsplit-tui` or `task run-tui`
+2. Paste your large document in the input area
+3. Press ENTER to split into chunks
+4. **All chunks are displayed simultaneously** in separate sections
+5. **Select and copy any chunk** by clicking and dragging or using Cmd+A within a section
+6. Paste each chunk into Copilot with context like:
    - "This is part 1/3 of a document. Please process and wait for remaining parts."
    - "This is part 2/3, continuing from the previous part."
    - "This is the final part 3/3. Please analyze the complete document."
+
+**Key Advantage:** No more navigating between chunks! All sections are visible and copyable at once.
 
 ### Using the CLI
 1. Run your text through: `pbpaste | ./textsplit`
@@ -215,8 +218,11 @@ Pull requests welcome! Some ideas for additional features:
 
 The TUI provides a beautiful, interactive experience:
 - Clean input area for pasting text
-- Visual chunk navigation
-- Real-time feedback
+- **Multiple chunk sections displayed simultaneously**
+- **Each chunk in its own copyable box** with headers
+- Real-time character counts and feedback
+- Visual separators between chunks
+- Copy instructions and guidance
 - Intuitive keyboard controls
 
-*Note: Screenshots would show the colorful, well-designed terminal interface with input/output areas and navigation controls.*
+**Perfect Copilot Workflow:** Paste text → Press ENTER → Copy each section individually → Paste into Copilot with context!

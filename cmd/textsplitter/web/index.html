@@ -645,18 +645,40 @@ Just paste and click Split!"
                 chunks.forEach((chunk, index) => {
                     const chunkElement = document.createElement('div');
                     chunkElement.className = 'chunk';
-                    chunkElement.innerHTML = `
-                        <div class="chunk-header">
-                            <span>📄 PART ${index + 1}/${chunks.length} (${chunk.length} characters)</span>
-                            <div class="chunk-controls">
-                                <input type="checkbox" class="chunk-checkbox" onchange="toggleChunkCompleted(this)" title="Mark as copied">
-                                <button class="copy-btn" onclick="copyToClipboard(\`${chunk.replace(/`/g, '\\`')}\`, this)">
-                                    📋 Copy
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chunk-content">${chunk}</div>
-                    `;
+                    
+                    // Create header
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'chunk-header';
+                    
+                    const titleSpan = document.createElement('span');
+                    titleSpan.textContent = `📄 PART ${index + 1}/${chunks.length} (${chunk.length} characters)`;
+                    
+                    const controlsDiv = document.createElement('div');
+                    controlsDiv.className = 'chunk-controls';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'chunk-checkbox';
+                    checkbox.title = 'Mark as copied';
+                    checkbox.onchange = function() { toggleChunkCompleted(this); };
+                    
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = '📋 Copy';
+                    copyBtn.onclick = function() { copyToClipboard(chunk, this); };
+                    
+                    controlsDiv.appendChild(checkbox);
+                    controlsDiv.appendChild(copyBtn);
+                    headerDiv.appendChild(titleSpan);
+                    headerDiv.appendChild(controlsDiv);
+                    
+                    // Create content
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'chunk-content';
+                    contentDiv.textContent = chunk;
+                    
+                    chunkElement.appendChild(headerDiv);
+                    chunkElement.appendChild(contentDiv);
                     chunksContainer.appendChild(chunkElement);
                 });
 

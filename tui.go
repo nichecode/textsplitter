@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -134,20 +135,60 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.chunks = []string{}
 			m.currentView = 0
 
+		case "ctrl+v":
+			// Handle paste (this is often handled by the terminal, but we can try)
+			// In practice, most terminals will paste the text as a series of characters
+			// which will be handled by the default case below
+
 		case "backspace":
 			if m.currentView == 0 && len(m.inputText) > 0 {
 				m.inputText = m.inputText[:len(m.inputText)-1]
 			}
 
+		case "delete":
+			if m.currentView == 0 && len(m.inputText) > 0 {
+				m.inputText = m.inputText[:len(m.inputText)-1]
+			}
+
 		default:
-			// Add character to input
-			if m.currentView == 0 && len(msg.String()) == 1 {
-				m.inputText += msg.String()
+			// Handle input text (including pasted text)
+			if m.currentView == 0 {
+				// Handle special keys that shouldn't be added to input
+				switch msg.Type {
+				case tea.KeyCtrlC, tea.KeyCtrlD, tea.KeyEsc:
+					// Don't add these to input
+				default:
+					// Add the string to input - this handles both single characters and pasted text
+					if len(msg.String()) > 0 {
+						// Filter out control characters but allow printable text and newlines
+						text := msg.String()
+						if isPrintableText(text) {
+							m.inputText += text
+						}
+					}
+				}
 			}
 		}
 	}
 
 	return m, nil
+}
+
+// isPrintableText checks if the text contains printable characters
+func isPrintableText(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	
+	// Allow newlines, tabs, and printable ASCII characters
+	for _, r := range s {
+		if r == '\n' || r == '\t' || r == '\r' || (r >= 32 && r <= 126) || r >= 128 {
+			continue
+		} else {
+			return false
+		}
+	}
+	return true
 }
 
 func (m model) View() string {
@@ -180,15 +221,21 @@ func (m model) renderInputView() string {
 	var content []string
 
 	// Input box
-	inputLabel := "📝 Paste your text here:"
+	inputLabel := "📝 Paste your text here (Cmd+V or Ctrl+V):"
 	content = append(content, inputLabel)
 
 	inputContent := m.inputText
 	if len(inputContent) == 0 {
-		inputContent = "Start typing or paste your text..."
+		inputContent = "Paste your large text here...\n\nTip: Most terminals handle paste automatically.\nJust copy your text and paste it here!"
 	}
 
-	inputBox := inputBoxStyle.Render(inputContent)
+	// Truncate display if too long for the input box
+	displayContent := inputContent
+	if len(displayContent) > 500 {
+		displayContent = displayContent[:497] + "..."
+	}
+
+	inputBox := inputBoxStyle.Render(displayContent)
 	content = append(content, inputBox)
 
 	// Character count
@@ -199,12 +246,18 @@ func (m model) renderInputView() string {
 	}
 	content = append(content, helpStyle.Render(charCount))
 
+	// Instructions for pasting
+	if len(m.inputText) == 0 {
+		pasteInstructions := "💡 To paste large text: Copy your text from another app, then paste here with Cmd+V (Mac) or Ctrl+V (Windows/Linux)"
+		content = append(content, instructionStyle.Render(pasteInstructions))
+	}
+
 	// Split button
 	var splitButton string
 	if len(m.inputText) > 0 {
 		splitButton = activeButtonStyle.Render("Press ENTER to Split")
 	} else {
-		splitButton = buttonStyle.Render("Enter text to split")
+		splitButton = buttonStyle.Render("Paste text first, then press ENTER")
 	}
 	content = append(content, splitButton)
 
@@ -219,7 +272,7 @@ func (m model) renderAllChunksView() string {
 	var content []string
 
 	// Instructions
-	instructions := "💡 Select and copy text from any section below (Cmd+A selects all text in a section)"
+	instructions := "💡 Select and copy text from any section below (Click and drag to select, Cmd+C to copy)"
 	content = append(content, instructionStyle.Render(instructions))
 
 	// Summary header
@@ -256,7 +309,7 @@ func (m model) renderHelp() string {
 
 	if m.currentView == 0 {
 		helpLines = []string{
-			"📋 Paste text and press ENTER to split",
+			"📋 Paste large text (Cmd+V) and press ENTER to split",
 			"🔄 R to reset | ↑/↓ to adjust chunk size",
 			"❌ Q or Ctrl+C to quit",
 		}
@@ -321,9 +374,28 @@ func main() {
 		}
 	}
 
+	// Check if there's input from stdin (piped input)
+	var initialText string
+	stat, err := os.Stdin.Stat()
+	if err == nil && (stat.Mode()&os.ModeCharDevice) == 0 {
+		// There's piped input, read it
+		var buf strings.Builder
+		_, err := io.Copy(&buf, os.Stdin)
+		if err == nil {
+			initialText = strings.TrimSpace(buf.String())
+		}
+	}
+
 	m := model{
 		chunkSize:   chunkSize,
 		currentView: 0,
+		inputText:   initialText,
+	}
+
+	// If we have initial text, start in output view
+	if len(initialText) > 0 {
+		m.chunks = splitText(initialText, chunkSize)
+		m.currentView = 1
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

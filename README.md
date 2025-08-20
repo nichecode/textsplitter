@@ -64,13 +64,17 @@ task build-cli  # Command line version
 ```
 
 **TUI Controls:**
-- **Type/Paste** text in the input area
+- **Paste large text** directly with Cmd+V (Mac) or Ctrl+V (Windows/Linux)
 - **ENTER** to split text into chunks
-- **← →** to navigate between chunks
 - **↑ ↓** to adjust chunk size
 - **TAB** to switch between input and output views
 - **R** to reset and start over
 - **Q** or **Ctrl+C** to quit
+
+**Paste Methods:**
+1. **Interactive paste**: Run `task run-tui` and paste directly in the terminal
+2. **Clipboard paste**: Run `task run-tui-paste` to automatically use clipboard content
+3. **Pipe input**: `pbpaste | textsplit-tui` or `echo "text" | textsplit-tui`
 
 The TUI provides a clean, visual interface where you can:
 1. Paste your large text
@@ -161,10 +165,11 @@ Summary: Split into 3 parts
 task --list
 
 # Essential commands
-task setup      # First time setup
-task run-tui    # Run the interactive UI
-task run-cli    # Run command line version  
-task demo       # Quick demonstration
+task setup           # First time setup
+task run-tui         # Run the interactive UI
+task run-tui-paste   # Run TUI with clipboard content
+task run-cli         # Run command line version  
+task demo            # Quick demonstration
 
 # Development workflow
 task test       # Run tests

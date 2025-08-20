@@ -121,6 +121,21 @@ tasks:
       - echo "🎨 Running TUI version..."
       - ./{{.TUI_NAME}} {{.TUI_ARGS}}
 
+  run-tui-paste:
+    desc: 📋 Run TUI with clipboard content (better for large text)
+    deps: [build-tui]
+    cmds:
+      - echo "📋 Reading from clipboard and running TUI..."
+      - |
+        if command -v pbpaste >/dev/null 2>&1; then
+          pbpaste | ./{{.TUI_NAME}} {{.TUI_ARGS}}
+        elif command -v xclip >/dev/null 2>&1; then
+          xclip -selection clipboard -o | ./{{.TUI_NAME}} {{.TUI_ARGS}}
+        else
+          echo "📋 Copy your text to clipboard, then paste it here and press Ctrl+D:"
+          cat | ./{{.TUI_NAME}} {{.TUI_ARGS}}
+        fi
+
   demo:
     desc: 🎭 Run a quick demo
     deps: [build-cli]

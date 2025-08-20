@@ -486,7 +486,7 @@
                     <div class="whitespace-control">
                         <label>
                             <input type="checkbox" id="compactMode" class="compact-checkbox">
-                            <span class="compact-label">Compress whitespace (enabled by default)</span>
+                            <span class="compact-label">Smart compression (YAML-aware, enabled by default)</span>
                         </label>
                     </div>
                     <div class="stats" id="inputStats">
@@ -494,6 +494,9 @@
                     </div>
                     <div class="stats" id="compressionStats" style="display: none; color: #ff8c00; font-weight: 500;">
                         <!-- Compression savings will be shown here -->
+                    </div>
+                    <div class="stats" id="yamlDetectionStats" style="display: none; color: #10b981; font-weight: 500;">
+                        <!-- YAML detection notice will be shown here -->
                     </div>
                 </div>
 
@@ -564,6 +567,7 @@ Just paste and click Split!"
         const pasteBtn = document.getElementById('pasteBtn');
         const inputStats = document.getElementById('inputStats');
         const compressionStats = document.getElementById('compressionStats');
+        const yamlDetectionStats = document.getElementById('yamlDetectionStats');
         const outputSection = document.getElementById('outputSection');
         const outputStats = document.getElementById('outputStats');
         const chunksContainer = document.getElementById('chunksContainer');
@@ -579,6 +583,9 @@ Just paste and click Split!"
 
         // Advanced whitespace compression function optimized for ALMs
         function compressWhitespace(text) {
+            // Detect file type for specialized compression
+            const isYAML = detectYAMLContent(text);
+            
             // Detect code blocks first to preserve their formatting
             const codeBlocks = [];
             let modifiedText = text;
@@ -589,6 +596,11 @@ Just paste and click Split!"
                 codeBlocks.push(block);
                 return placeholder;
             });
+            
+            // Apply YAML-specific compression if detected
+            if (isYAML) {
+                modifiedText = compressYAML(modifiedText);
+            }
             
             // Preserve intentional indentation in lists and code-like structures
             const preservedIndents = [];
@@ -631,6 +643,100 @@ Just paste and click Split!"
             return modifiedText;
         }
 
+        // YAML content detection
+        function detectYAMLContent(text) {
+            const yamlIndicators = [
+                /^version:\s*[\d.]+/m,
+                /^apiVersion:/m,
+                /^kind:/m,
+                /^orbs:/m,
+                /^jobs:/m,
+                /^workflows:/m,
+                /^parameters:/m,
+                /^steps:/m,
+                /^\s*-\s+name:/m,
+                /^\s*-\s+run:/m,
+                /^\s*type:\s*string/m,
+                /^\s*default:/m
+            ];
+            
+            return yamlIndicators.some(pattern => pattern.test(text));
+        }
+
+        // YAML-specific compression optimized for DevOps workflows
+        function compressYAML(text) {
+            return text
+                // Core YAML structure abbreviations (universally recognized)
+                .replace(/\bparameters\b/g, 'params')
+                .replace(/\btype:\s*string\b/g, 'typ: str')
+                .replace(/\btype:\s*boolean\b/g, 'typ: bool') 
+                .replace(/\btype:\s*integer\b/g, 'typ: int')
+                .replace(/\bdefault\b/g, 'def')
+                .replace(/\bcommand\b/g, 'cmd')
+                .replace(/\bworking_directory\b/g, 'work_dir')
+                .replace(/\bworking-directory\b/g, 'work-dir')
+                .replace(/\benvironment\b/g, 'env')
+                
+                // CircleCI-specific abbreviations
+                .replace(/\bpipeline\.parameters\b/g, 'pipeline.params')
+                .replace(/\bpersist_to_workspace\b/g, 'persist_ws')
+                .replace(/\bstore_artifacts\b/g, 'store_arts')
+                .replace(/\battach_workspace\b/g, 'attach_ws')
+                .replace(/\bresource_class\b/g, 'resource')
+                
+                // GitHub Actions abbreviations
+                .replace(/\buses:\s*actions\/checkout@/g, 'uses: checkout@')
+                .replace(/\buses:\s*actions\/setup-node@/g, 'uses: setup-node@')
+                .replace(/\buses:\s*actions\/setup-python@/g, 'uses: setup-py@')
+                .replace(/\buses:\s*actions\/upload-artifact@/g, 'uses: upload@')
+                .replace(/\buses:\s*actions\/download-artifact@/g, 'uses: download@')
+                .replace(/\bruns-on\b/g, 'runs')
+                
+                // Docker/Kubernetes abbreviations  
+                .replace(/\bapiVersion\b/g, 'api')
+                .replace(/\bmetadata\b/g, 'meta')
+                .replace(/\bnamespace\b/g, 'ns')
+                .replace(/\bcontainers\b/g, 'ctrs')
+                .replace(/\bvolumeMounts\b/g, 'mounts')
+                .replace(/\bserviceAccount\b/g, 'svcAcct')
+                
+                // Common build/deployment terms
+                .replace(/\bInstall dependencies\b/g, 'Install deps')
+                .replace(/\bBuild application\b/g, 'Build app')
+                .replace(/\bRun tests\b/g, 'Run tests')
+                .replace(/\bDeploy to\b/g, 'Deploy')
+                .replace(/\bTest executable\b/g, 'Test exec')
+                .replace(/\bCreate archive\b/g, 'Archive')
+                .replace(/\bCreate tarball\b/g, 'Tarball')
+                .replace(/\bDownload and install\b/g, 'Install')
+                .replace(/\bRun as a server\b/g, 'Run server')
+                .replace(/\bRun as a client\b/g, 'Run client')
+                
+                // Common variable name compressions
+                .replace(/\bCIRCLE_WORKING_DIRECTORY\b/g, 'CWD')
+                .replace(/\bGITHUB_WORKSPACE\b/g, 'WORKSPACE')
+                .replace(/\bRUNNER_WORKSPACE\b/g, 'RUNNER_WS')
+                
+                // Docker image abbreviations
+                .replace(/\bnode:(\d+)/g, 'node:$1')
+                .replace(/\bpython:(\d+)/g, 'py:$1')
+                .replace(/\bubuntu:latest\b/g, 'ubuntu')
+                .replace(/\balpine:latest\b/g, 'alpine')
+                
+                // Kubernetes resource abbreviations
+                .replace(/\bDeployment\b/g, 'Deploy')
+                .replace(/\bConfigMap\b/g, 'ConfigM')
+                .replace(/\bSecretKeyRef\b/g, 'SecretRef')
+                .replace(/\bPersistentVolume\b/g, 'PV')
+                .replace(/\bPersistentVolumeClaim\b/g, 'PVC')
+                
+                // Terraform abbreviations
+                .replace(/\bresource\s+"([^"]+)"\s+"([^"]+)"/g, 'res "$1" "$2"')
+                .replace(/\bvariable\b/g, 'var')
+                .replace(/\bprovider\b/g, 'prov')
+                .replace(/\bterraform\b/g, 'tf');
+        }
+
         function updateInputStats() {
             const text = inputText.value;
             const size = parseInt(chunkSize.value) || 3000;
@@ -638,8 +744,18 @@ Just paste and click Split!"
             if (text.length === 0) {
                 inputStats.textContent = 'Ready to split text';
                 compressionStats.style.display = 'none';
+                yamlDetectionStats.style.display = 'none';
                 splitBtn.disabled = true;
                 return;
+            }
+
+            // Check for YAML content and show detection notice
+            const isYAML = detectYAMLContent(text);
+            if (isYAML && compactMode.checked) {
+                yamlDetectionStats.innerHTML = '🔧 YAML detected - applying enhanced DevOps compression';
+                yamlDetectionStats.style.display = 'block';
+            } else {
+                yamlDetectionStats.style.display = 'none';
             }
 
             // Calculate compression savings if enabled
@@ -838,6 +954,7 @@ Just paste and click Split!"
             inputText.value = '';
             outputSection.style.display = 'none';
             compressionStats.style.display = 'none';
+            yamlDetectionStats.style.display = 'none';
             updateInputStats();
             inputText.focus();
         });

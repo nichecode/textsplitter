@@ -1,13 +1,17 @@
 # Binaries
 textsplit
 textsplit.exe
+textsplit-tui
+textsplit-tui.exe
 textsplitter
 textsplitter.exe
+dist/
 
 # Go specific
 *.test
 *.prof
 coverage.out
+go.sum
 
 # IDE files
 .vscode/

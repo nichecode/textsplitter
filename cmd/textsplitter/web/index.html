@@ -114,6 +114,49 @@
             box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.1);
         }
 
+        .whitespace-control {
+            display: flex;
+            align-items: center;
+        }
+
+        .whitespace-control label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #cccccc;
+        }
+
+        .compact-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #3c3c3c;
+            border-radius: 3px;
+            background: #1e1e1e;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .compact-checkbox:checked {
+            background: #ff8c00;
+            border-color: #ff8c00;
+        }
+
+        .compact-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: -1px;
+            left: 2px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .compact-label {
+            user-select: none;
+        }
+
         .stats {
             font-size: 0.85rem;
             color: #999999;
@@ -440,8 +483,17 @@
                         <input type="number" id="chunkSize" value="3000" min="500" max="8000" step="100">
                         <span>characters</span>
                     </div>
+                    <div class="whitespace-control">
+                        <label>
+                            <input type="checkbox" id="compactMode" class="compact-checkbox">
+                            <span class="compact-label">Compress whitespace (enabled by default)</span>
+                        </label>
+                    </div>
                     <div class="stats" id="inputStats">
                         Ready to split text
+                    </div>
+                    <div class="stats" id="compressionStats" style="display: none; color: #ff8c00; font-weight: 500;">
+                        <!-- Compression savings will be shown here -->
                     </div>
                 </div>
 
@@ -506,18 +558,78 @@ Just paste and click Split!"
     <script>
         const inputText = document.getElementById('inputText');
         const chunkSize = document.getElementById('chunkSize');
+        const compactMode = document.getElementById('compactMode');
         const splitBtn = document.getElementById('splitBtn');
         const clearBtn = document.getElementById('clearBtn');
         const pasteBtn = document.getElementById('pasteBtn');
         const inputStats = document.getElementById('inputStats');
+        const compressionStats = document.getElementById('compressionStats');
         const outputSection = document.getElementById('outputSection');
         const outputStats = document.getElementById('outputStats');
         const chunksContainer = document.getElementById('chunksContainer');
         const loading = document.getElementById('loading');
 
+        // Set default checkbox state - enabled by default
+        compactMode.checked = true;
+
         // Update stats as user types
         inputText.addEventListener('input', updateInputStats);
         chunkSize.addEventListener('input', updateInputStats);
+        compactMode.addEventListener('change', updateInputStats);
+
+        // Advanced whitespace compression function optimized for ALMs
+        function compressWhitespace(text) {
+            // Detect code blocks first to preserve their formatting
+            const codeBlocks = [];
+            let modifiedText = text;
+            
+            // Preserve code blocks (both ``` and ` formats)
+            modifiedText = modifiedText.replace(/(```[\s\S]*?```|`[^`\n]+`)/g, (match, block) => {
+                const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
+                codeBlocks.push(block);
+                return placeholder;
+            });
+            
+            // Preserve intentional indentation in lists and code-like structures
+            const preservedIndents = [];
+            modifiedText = modifiedText.replace(/^([ \t]+)([*+-]|\d+\.|[a-zA-Z]\.|[ivxlcdm]+\.)/gm, (match, indent, marker) => {
+                const placeholder = `__INDENT_${preservedIndents.length}__`;
+                preservedIndents.push(indent);
+                return placeholder + marker;
+            });
+            
+            // Main compression logic
+            modifiedText = modifiedText
+                // Normalize line endings
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                // Replace multiple spaces with single spaces
+                .replace(/ {2,}/g, ' ')
+                // Replace multiple tabs with single spaces
+                .replace(/\t+/g, ' ')
+                // Replace tabs with spaces
+                .replace(/\t/g, ' ')
+                // Remove trailing spaces from lines
+                .replace(/ +$/gm, '')
+                // Replace 3+ consecutive newlines with double newlines (preserve paragraph breaks)
+                .replace(/\n{3,}/g, '\n\n')
+                // Remove spaces around newlines
+                .replace(/ *\n */g, '\n')
+                // Trim leading and trailing whitespace from the entire text
+                .trim();
+            
+            // Restore preserved indentation
+            preservedIndents.forEach((indent, index) => {
+                modifiedText = modifiedText.replace(`__INDENT_${index}__`, indent);
+            });
+            
+            // Restore code blocks
+            codeBlocks.forEach((block, index) => {
+                modifiedText = modifiedText.replace(`__CODE_BLOCK_${index}__`, block);
+            });
+            
+            return modifiedText;
+        }
 
         function updateInputStats() {
             const text = inputText.value;
@@ -525,13 +637,36 @@ Just paste and click Split!"
             
             if (text.length === 0) {
                 inputStats.textContent = 'Ready to split text';
+                compressionStats.style.display = 'none';
                 splitBtn.disabled = true;
                 return;
             }
 
-            const estimatedChunks = Math.ceil(text.length / size);
+            // Calculate compression savings if enabled
+            let processedText = text;
+            let compressionInfo = '';
+            
+            if (compactMode.checked) {
+                processedText = compressWhitespace(text);
+                const savedChars = text.length - processedText.length;
+                const savedPercentage = ((savedChars / text.length) * 100).toFixed(1);
+                
+                if (savedChars > 0) {
+                    compressionInfo = `💾 Compression: ${savedChars.toLocaleString()} characters saved (${savedPercentage}%)`;
+                    compressionStats.innerHTML = compressionInfo;
+                    compressionStats.style.display = 'block';
+                } else {
+                    compressionStats.style.display = 'none';
+                }
+            } else {
+                compressionStats.style.display = 'none';
+            }
+            
+            const effectiveLength = processedText.length;
+            const estimatedChunks = Math.ceil(effectiveLength / size);
+            
             inputStats.innerHTML = `
-                📊 ${text.length.toLocaleString()} characters | 
+                📊 ${text.length.toLocaleString()} characters${compactMode.checked && processedText.length !== text.length ? ` → ${effectiveLength.toLocaleString()}` : ''} | 
                 Estimated ${estimatedChunks} chunk${estimatedChunks !== 1 ? 's' : ''}
             `;
             splitBtn.disabled = false;
@@ -630,13 +765,23 @@ Just paste and click Split!"
 
             // Small delay to show loading state
             setTimeout(() => {
-                const chunks = splitText(text, size);
+                // Apply compression if enabled
+                const processedText = compactMode.checked ? compressWhitespace(text) : text;
+                const chunks = splitText(processedText, size);
+                
+                // Calculate compression info for display
+                const originalLength = text.length;
+                const compressedLength = processedText.length;
+                const savedChars = originalLength - compressedLength;
                 
                 // Update stats
-                outputStats.innerHTML = `
-                    ✂️ ${chunks.length} chunk${chunks.length !== 1 ? 's' : ''} | 
-                    ${text.length.toLocaleString()} total characters
-                `;
+                let statsText = `✂️ ${chunks.length} chunk${chunks.length !== 1 ? 's' : ''}`;
+                if (compactMode.checked && savedChars > 0) {
+                    statsText += ` | 💾 ${savedChars.toLocaleString()} chars saved`;
+                }
+                statsText += ` | ${originalLength.toLocaleString()} total characters`;
+                
+                outputStats.innerHTML = statsText;
 
                 // Clear previous chunks
                 chunksContainer.innerHTML = '';
@@ -692,6 +837,7 @@ Just paste and click Split!"
         clearBtn.addEventListener('click', () => {
             inputText.value = '';
             outputSection.style.display = 'none';
+            compressionStats.style.display = 'none';
             updateInputStats();
             inputText.focus();
         });
